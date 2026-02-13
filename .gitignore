@@ -19,3 +19,7 @@ venv/
 # Logs
 *.log
 logsense.db
+logsense.db
+.venv/
+__pycache__/
+*.pyc
