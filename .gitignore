@@ -25,3 +25,7 @@ __pycache__/
 *.pyc
 logsense.db
 .venv/
+
+# local db
+*.db
+logsense.db
