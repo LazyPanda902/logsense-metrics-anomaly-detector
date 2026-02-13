@@ -6,6 +6,22 @@ import pandas as pd
 import numpy as np
 import requests
 
+from urllib.parse import urlparse
+
+def api_is_up(detect_url: str) -> bool:
+    """
+    Quick health check:
+    - If user enters .../detect, we ping the API root /
+    - Returns True if reachable, False otherwise
+    """
+    try:
+        u = urlparse(detect_url)
+        base = f"{u.scheme}://{u.netloc}/"
+        r = requests.get(base, timeout=2)
+        return r.status_code == 200
+    except Exception:
+        return False
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
@@ -14,6 +30,12 @@ st.title("LogSense: Metrics Anomaly Detector")
 st.caption("By Ali Bidhendi")
 
 api_url = st.text_input("API URL", value="http://localhost:8000/detect")
+
+if api_is_up(api_url):
+    st.success("API is running ✅")
+else:
+    st.error("API is not running ❌  Start it with: python3 -m uvicorn app.main:app --reload")
+    st.stop()
 
 
 def make_sample_metrics(n: int = 240, freq_seconds: int = 60, seed: int = 42) -> pd.DataFrame:
@@ -122,8 +144,14 @@ with right:
 
     if st.button("Detect anomalies", type="primary"):
         payload = {"points": df.to_dict(orient="records")}
-        r = requests.post(api_url, json=payload, timeout=60)
-        r.raise_for_status()
+
+        try:
+            r = requests.post(api_url, json=payload, timeout=60)
+            r.raise_for_status()
+        except Exception as e:
+            st.error(f"Request failed: {e}")
+            st.stop()
+
         data = r.json()
 
         st.success("Detection complete.")
