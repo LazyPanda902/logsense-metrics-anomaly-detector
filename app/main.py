@@ -6,7 +6,7 @@ from app.schemas import IngestRequest, DetectResponse, Anomaly
 from app.detector import detect_anomalies, explain_fields
 from app.db import init_db, save_run, save_anomalies, list_runs, get_anomalies_for_run
 
-app = FastAPI(title="LogSense API", version="0.2", description="By Ali Bidhendi")
+app = FastAPI(title="LogSense API", version="0.3", description="By Ali Bidhendi")
 
 
 @app.on_event("startup")
@@ -21,10 +21,13 @@ def home():
 
 @app.post("/detect", response_model=DetectResponse)
 def detect(req: IngestRequest):
+    # Build DF from request
     rows = [p.model_dump() for p in req.points]
     df = pd.DataFrame(rows)
 
-    out, _ = detect_anomalies(df, contamination=0.05)
+    # IMPORTANT: use contamination from the request
+    # This controls sensitivity and prevents "always 12" on 240 points.
+    out, _ = detect_anomalies(df, contamination=float(req.contamination))
 
     anomalies = []
     for _, r in out[out["anomaly"]].iterrows():
@@ -69,4 +72,5 @@ def run_anomalies(run_id: int):
             for r in rows
         ]
     }
+
 

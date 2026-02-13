@@ -27,12 +27,14 @@ def make_sample_metrics(n: int = 240, freq_seconds: int = 60, seed: int = 42) ->
     disk = np.clip(rng.normal(20, 3, n), 0, 100)
     latency = np.clip(rng.normal(120, 15, n), 10, 2000)
 
+    # Spikes (cause anomalies)
     spike_idx = rng.choice(np.arange(20, n - 20), size=max(3, n // 80), replace=False)
     for idx in spike_idx:
         cpu[idx] = np.clip(cpu[idx] + rng.uniform(40, 65), 0, 100)
         ram[idx] = np.clip(ram[idx] + rng.uniform(20, 35), 0, 100)
         latency[idx] = np.clip(latency[idx] + rng.uniform(400, 1200), 10, 2000)
 
+    # Drift (gradual change)
     drift_start = int(n * 0.65)
     drift_end = int(n * 0.85)
     drift = np.linspace(0, 250, drift_end - drift_start)
@@ -61,7 +63,7 @@ with tab1:
         with demo_cols[0]:
             n_points = st.number_input("Points", min_value=60, max_value=2000, value=240, step=60)
         with demo_cols[1]:
-            freq = st.selectbox("Interval", [30, 60, 120, 300], index=1)
+            freq = st.selectbox("Interval (seconds)", [30, 60, 120, 300], index=1)
         with demo_cols[2]:
             seed = st.number_input("Seed", min_value=1, max_value=9999, value=42, step=1)
 
@@ -106,8 +108,25 @@ with tab1:
 
     with right:
         st.markdown("### Detection (saves to SQLite)")
+
+        # NEW: sensitivity slider
+        contamination = st.slider(
+            "Sensitivity (contamination)",
+            min_value=0.01,
+            max_value=0.30,
+            value=0.05,
+            step=0.01,
+            help="Higher = more anomalies flagged. Example: 0.05 with 240 points ~ 12 anomalies."
+        )
+
+        expected = int(round(len(df) * float(contamination)))
+        st.caption(f"Expected anomalies (roughly): ~{expected} out of {len(df)} points")
+
         if st.button("Detect anomalies", type="primary"):
-            payload = {"points": df.to_dict(orient="records")}
+            payload = {
+                "points": df.to_dict(orient="records"),
+                "contamination": float(contamination),
+            }
 
             try:
                 r = requests.post(api_url, json=payload, timeout=60)
@@ -149,7 +168,12 @@ with tab2:
     runs_df = pd.DataFrame(runs)
     st.dataframe(runs_df, use_container_width=True)
 
-    run_id = st.number_input("Enter run_id to view anomalies", min_value=1, value=int(runs_df.iloc[0]["id"]))
+    run_id = st.number_input(
+        "Enter run_id to view anomalies",
+        min_value=1,
+        value=int(runs_df.iloc[0]["id"])
+    )
+
     anomalies_url = f"{base}/runs/{int(run_id)}/anomalies"
 
     try:
