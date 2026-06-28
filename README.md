@@ -118,3 +118,15 @@ UI shows connection refused: make sure the FastAPI server is running on http://l
 Wrong API URL in UI: check the “API URL” field at the top of the Streamlit page
 
 If you changed ports, update the UI field accordingly.
+
+
+## Privacy and security
+
+LogSense is designed for local metrics analysis. Uploaded CSV data is sent to the local FastAPI backend configured in the Streamlit UI and saved to the local SQLite database used by the app.
+
+Do not upload production logs, private customer data, secrets, access tokens, or sensitive infrastructure details unless you control the runtime environment and understand where the SQLite database and application logs are stored.
+
+
+## License
+
+Add a license before using this project outside personal portfolio/demo work.
